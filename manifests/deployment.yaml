@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: llmops-app
-          image: deep2789/yt-seo:v3
+          image: deep2789/yt-seo:v4
           ports:
             - containerPort: 8501

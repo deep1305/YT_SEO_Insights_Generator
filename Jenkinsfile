@@ -1,17 +1,23 @@
 pipeline {
     agent any
+
     environment {
-        DOCKER_HUB_REPO = "dataguru97/evolue-seo"    
+        GITHUB_REPO = "https://github.com/deep1305/YT_SEO_Insights_Generator.git"
+        GITHUB_CREDENTIALS_ID = "github-token"
+        DOCKER_HUB_REPO = "dataguru97/youtube-seo-insights-generator"
         DOCKER_HUB_CREDENTIALS_ID = "dockerhub-token"
         IMAGE_TAG = "v${BUILD_NUMBER}"
+        DEPLOYMENT_FILE = "manifests/deployment.yaml"
+        ARGOCD_SERVER = "34.61.137.31:31704"
+        ARGOCD_APP_NAME = "yt-seo-insights-generator"
+        KUBE_SERVER_URL = "https://192.168.49.2:8443"
     }
 
     stages {
-
         stage('Checkout Github') {
             steps {
                 echo 'Checking out code from GitHub...'
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/data-guru0/EVOLVUE-YT-SEO-INSIGHTS-GEN.git']])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-token', url: 'https://github.com/deep1305/YT_SEO_Insights_Generator.git']])
             }
         }
 
@@ -19,7 +25,7 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    dockerImage = docker.build("${DOCKER_HUB_REPO}:${IMAGE_TAG}")
+                    docker.build("${DOCKER_HUB_REPO}:${IMAGE_TAG}")
                 }
             }
         }
@@ -28,18 +34,18 @@ pipeline {
             steps {
                 script {
                     echo 'Pushing Docker image to DockerHub...'
-                    docker.withRegistry('https://registry.hub.docker.com' , "${DOCKER_HUB_CREDENTIALS_ID}") {
-                        dockerImage.push("${IMAGE_TAG}")
+                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_HUB_CREDENTIALS_ID}") {
+                        docker.image("${DOCKER_HUB_REPO}:${IMAGE_TAG}").push()
+                    }
                 }
             }
-        }
         }
 
         stage('Update Deployment YAML with New Tag') {
             steps {
                 script {
                     sh """
-                    sed -i 's|image: dataguru97/evolue-seo:.*|image: dataguru97/evolue-seo:${IMAGE_TAG}|' manifests/deployment.yaml
+                    sed -i 's|image: .*|image: ${DOCKER_HUB_REPO}:${IMAGE_TAG}|' ${DEPLOYMENT_FILE}
                     """
                 }
             }
@@ -50,19 +56,16 @@ pipeline {
                 script {
                     withCredentials([
                         usernamePassword(
-                            credentialsId: 'github-token',
+                            credentialsId: "${GITHUB_CREDENTIALS_ID}",
                             usernameVariable: 'GIT_USER',
                             passwordVariable: 'GIT_PASS'
                         )
                     ]) {
                         sh '''
-                        git config user.name "data-guru0"
-                        git config user.email "gyrogodnon@gmail.com"
-                        git add manifests/deployment.yaml
-                        git commit -m "Update image tag to ${IMAGE_TAG}" || echo "No changes to commit"
-                        git push https://${GIT_USER}:${GIT_PASS}@github.com/data-guru0/EVOLVUE-YT-SEO-INSIGHTS-GEN.git HEAD:main
+                        git add ${DEPLOYMENT_FILE}
+                        git -c user.name="deep1305" -c user.email="shahdeep1399@gmail.com" commit -m "Update image tag to ${IMAGE_TAG}" || echo "No changes to commit"
+                        git push https://${GIT_USER}:${GIT_PASS}@github.com/deep1305/YT_SEO_Insights_Generator.git HEAD:main
                         '''
-
                     }
                 }
             }
@@ -75,6 +78,7 @@ pipeline {
                 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
                 mv kubectl /usr/local/bin/kubectl
+
                 curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
                 chmod +x /usr/local/bin/argocd
                 '''
@@ -84,17 +88,15 @@ pipeline {
         stage('Apply Kubernetes & Sync App with ArgoCD') {
             steps {
                 script {
-                    
-        kubeconfig(credentialsId: 'kubeconfig', serverUrl: 'https://192.168.49.2:8443') {
-                    sh '''
-                        argocd login 34.61.137.31:31704 --username admin --password $(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d) --insecure
+                    kubeconfig(credentialsId: 'kubeconfig', serverUrl: "${KUBE_SERVER_URL}") {
+                        sh '''
+                        argocd login ${ARGOCD_SERVER} --username admin --password $(kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d) --insecure
 
-                        argocd app sync evolvue
-                            '''
-         }
+                        argocd app sync ${ARGOCD_APP_NAME}
+                        '''
+                    }
                 }
             }
         }
-
     }
 }

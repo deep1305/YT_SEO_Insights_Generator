@@ -4,7 +4,7 @@ pipeline {
     environment {
         GITHUB_REPO = "https://github.com/deep1305/YT_SEO_Insights_Generator.git"
         GITHUB_CREDENTIALS_ID = "github-token"
-        DOCKER_HUB_REPO = "dataguru97/youtube-seo-insights-generator"
+        DOCKER_HUB_REPO = "deep2789/yt-seo"
         DOCKER_HUB_CREDENTIALS_ID = "dockerhub-token"
         IMAGE_TAG = "v${BUILD_NUMBER}"
         DEPLOYMENT_FILE = "manifests/deployment.yaml"
@@ -21,12 +21,11 @@ pipeline {
             }
         }
 
-        /*
         stage('Build Docker Image') {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    docker.build("${DOCKER_HUB_REPO}:${IMAGE_TAG}")
+                    dockerImage = docker.build("${DOCKER_HUB_REPO}:${IMAGE_TAG}")
                 }
             }
         }
@@ -35,8 +34,8 @@ pipeline {
             steps {
                 script {
                     echo 'Pushing Docker image to DockerHub...'
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_HUB_CREDENTIALS_ID}") {
-                        docker.image("${DOCKER_HUB_REPO}:${IMAGE_TAG}").push()
+                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_HUB_CREDENTIALS_ID}") {
+                        dockerImage.push("${IMAGE_TAG}")
                     }
                 }
             }
@@ -72,6 +71,7 @@ pipeline {
             }
         }
 
+        /*
         stage('Install Kubectl & ArgoCD CLI Setup') {
             steps {
                 sh '''

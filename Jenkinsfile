@@ -8,7 +8,7 @@ pipeline {
         DOCKER_HUB_CREDENTIALS_ID = "dockerhub-token"
         IMAGE_TAG = "v${BUILD_NUMBER}"
         DEPLOYMENT_FILE = "manifests/deployment.yaml"
-        ARGOCD_SERVER = "35.255.54.254:31704/"
+        ARGOCD_SERVER = "35.255.54.254:31704"
         ARGOCD_APP_NAME = "yt-seo"
         KUBE_SERVER_URL = "https://192.168.49.2:8443"
     }
